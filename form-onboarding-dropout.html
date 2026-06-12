@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Milo Feedback</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Open Sans', Arial, sans-serif;
+    background: #E70E22;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Red background diagonal shape */
+  .bg-shape {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  /* Top header with logo */
+  .top-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px 24px;
+    flex-shrink: 0;
+  }
+
+  /* Card drawer */
+  .card {
+    position: relative;
+    z-index: 2;
+    background: #F7F7F7;
+    border-radius: 20px 20px 0 0;
+    flex: 1;
+    padding: 28px 20px 40px;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Segmented progress bar */
+  .seg-progress {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 32px;
+  }
+  .seg {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: #DEDEDE;
+    transition: background 0.3s;
+  }
+  .seg.filled { background: #E70E22; }
+
+  /* Question block — avatar + bubble */
+  .question-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .milo-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #720000;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .speech-bubble {
+    background: white;
+    border-radius: 0 14px 14px 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #141414;
+    line-height: 1.45;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    flex: 1;
+  }
+
+  /* Answer options */
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 16px;
+    background: white;
+    border-radius: 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    transition: border-color 0.18s, background 0.18s;
+    font-size: 15px;
+    color: #141414;
+  }
+  .option input[type="radio"] { display: none; }
+  .option .dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid #DEDEDE;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.18s;
+  }
+  .option .dot::after {
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #E70E22;
+    display: none;
+  }
+  .option.selected {
+    border-left-color: #E70E22;
+    background: #FFF5F5;
+  }
+  .option.selected .dot { border-color: #E70E22; }
+  .option.selected .dot::after { display: block; }
+
+  /* Textarea */
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 15px;
+    color: #141414;
+    resize: vertical;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    outline: none;
+    transition: box-shadow 0.2s;
+  }
+  textarea:focus { box-shadow: 0 0 0 2px #E70E22; }
+
+  .optional-hint {
+    font-size: 12px;
+    color: #ADADAD;
+    margin-top: 8px;
+    margin-left: 2px;
+  }
+
+  .error-msg {
+    color: #E70E22;
+    font-size: 12px;
+    margin-top: 6px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* Navigation */
+  .nav {
+    margin-top: 24px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn-back {
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #DEDEDE;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-back svg { width: 18px; height: 18px; }
+  .btn-next {
+    flex: 1;
+    height: 44px;
+    background: #141414;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+  }
+  .btn-next:hover { opacity: 0.85; }
+
+  .step { display: none; flex-direction: column; flex: 1; }
+  .step.active { display: flex; }
+
+  /* Thank you */
+  .thank-you {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    gap: 16px;
+  }
+  .thank-you .ty-icon {
+    width: 72px; height: 72px;
+    background: #E70E22;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .thank-you h2 { font-size: 22px; font-weight: 700; color: #141414; }
+  .thank-you p { font-size: 15px; color: #6b6b6b; line-height: 1.6; }
+
+  .main-panel { display: contents; }
+
+  @media (min-width: 640px) and (max-width: 1023px) {
+    body { align-items: center; padding: 60px 24px; }
+    .top-header { width: 100%; max-width: 480px; padding: 0 0 28px; }
+    .card { width: 100%; max-width: 480px; border-radius: 20px; flex: none; }
+  }
+
+  @media (min-width: 1024px) {
+    body { overflow: hidden; height: 100vh; padding: 0; }
+    .main-panel {
+      display: flex; flex: 1; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .bg-shape { position: absolute; }
+    .top-header { padding: 0 0 20px; }
+    .card {
+      width: 380px; max-width: none; border-radius: 16px;
+      flex: none; max-height: calc(100vh - 60px); overflow-y: auto;
+      padding: 22px 24px 28px;
+      box-shadow: 0 12px 60px rgba(0,0,0,0.28);
+    }
+    .seg-progress { margin-bottom: 20px; }
+    .question-block { margin-bottom: 16px; }
+    .option { padding: 11px 16px; }
+    .options { gap: 7px; }
+    .nav { margin-top: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Red diagonal background shape -->
+<div class="main-panel">
+
+<div class="bg-shape">
+  <svg width="100%" height="100%" viewBox="0 0 375 812" fill="none" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <path d="M154.212 12.2951L-533 777H337.871C558.135 777 672.915 514.449 523.441 352.483L209.214 11.9764C194.381 -4.1502 168.917 -3.95898 154.212 12.3588V12.2951Z" fill="#D6001D" opacity="0.5"/>
+  </svg>
+</div>
+
+<!-- Logo -->
+<div class="top-header">
+  <svg width="110" height="19" viewBox="0 0 143 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g clip-path="url(#lc)">
+      <path d="M79.1417 21.9461C77.2106 23.9149 74.7774 24.8992 71.8432 24.8992C68.9089 24.8992 66.4666 23.9149 64.5167 21.9461C62.5856 19.9585 61.6201 17.535 61.6201 14.6762C61.6201 11.8173 62.5856 9.40356 64.5167 7.43481C66.4666 5.44666 68.9089 4.45312 71.8432 4.45312C74.7774 4.45312 77.2106 5.4472 79.1417 7.43481C81.0916 9.40356 82.0668 11.8179 82.0668 14.6762C82.0668 17.5345 81.0916 19.9585 79.1417 21.9461ZM66.618 20.0717C67.9811 21.4914 69.723 22.2015 71.8432 22.2015C73.9633 22.2015 75.6961 21.4919 77.0398 20.0717C78.403 18.6325 79.0846 16.8341 79.0846 14.6756C79.0846 12.5172 78.403 10.7284 77.0398 9.30819C75.6955 7.86907 73.9633 7.14978 71.8432 7.14978C69.723 7.14978 67.9811 7.86907 66.618 9.30819C65.2737 10.7279 64.6018 12.5172 64.6018 14.6756C64.6018 16.8341 65.2737 18.6325 66.618 20.0717Z" fill="white"/>
+      <path d="M48.8384 22.061H61.0496V24.6171H45.9984V4.73828H48.8384V22.0616V22.061Z" fill="white"/>
+      <path d="M43.4467 7.29432H37.0572V22.0616H43.4467V24.6176H27.8276V22.0616H34.2172V7.29432H27.8276V4.73828H43.4467V7.29432Z" fill="white"/>
+      <path d="M19.2581 4.73828H25.2786V24.6171H22.4386V7.29378H21.3594L15.708 24.6171H10.4256L4.54741 7.29378H3.41163V24.6171H0.571655V4.73828H6.59213L12.4704 22.0616H13.6061L19.2575 4.73828H19.2581Z" fill="white"/>
+      <path d="M142.067 24.5657H137.597C133.65 24.5657 129.884 22.9176 127.205 20.0194L113.606 5.30172L118.052 0.488685C118.529 -0.0274785 119.344 -0.0274785 119.821 0.488685L142.067 24.5652Z" fill="white"/>
+      <path d="M104.489 0.489721L82.8239 24.5646L110.278 24.5662C117.222 24.5662 120.84 16.299 116.127 11.1988L106.222 0.478407C105.754 -0.0285977 104.95 -0.0232098 104.489 0.489721Z" fill="white"/>
+    </g>
+    <defs><clipPath id="lc"><rect width="142.639" height="25" fill="white"/></clipPath></defs>
+  </svg>
+</div>
+
+<!-- Card -->
+<div class="card">
+
+  <!-- Progress -->
+  <div class="seg-progress" id="segProgress">
+    <div class="seg filled"></div>
+    <div class="seg"></div>
+    <div class="seg"></div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step active" id="step-1">
+    <div class="question-block">
+      <div class="milo-avatar">
+        <svg width="22" height="22" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M38 6L14 54h26C51.6 54 57.5 38.7 49.4 30.1L40.2 5.9C39.4 4.1 37.1 4.1 38 6Z" fill="white"/>
+          <path d="M22 6L46 54H20C13.4 54 9.8 38.7 17.9 30.1L27.1 5.9C27.9 4.1 30.2 4.1 22 6Z" fill="white" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="speech-bubble">Du hast dein Milo-Setup bei <strong id="stepLabel">einem bestimmten Schritt</strong> unterbrochen — was hat dich dazu bewogen?</div>
+    </div>
+    <div class="options" id="opts-1">
+      <label class="option"><input type="radio" name="q1" value="Ich hatte keine Zeit"><span class="dot"></span><span>Ich hatte keine Zeit</span></label>
+      <label class="option"><input type="radio" name="q1" value="Der Schritt war unklar oder kompliziert"><span class="dot"></span><span>Der Schritt war unklar oder kompliziert</span></label>
+      <label class="option"><input type="radio" name="q1" value="Ich wollte keine Daten freigeben"><span class="dot"></span><span>Ich wollte keine Daten freigeben</span></label>
+      <label class="option"><input type="radio" name="q1" value="Ich hatte mein Gerät nicht zur Hand"><span class="dot"></span><span>Ich hatte mein Gerät nicht zur Hand</span></label>
+      <label class="option"><input type="radio" name="q1" value="Ich habe das Interesse verloren"><span class="dot"></span><span>Ich habe das Interesse verloren</span></label>
+      <label class="option"><input type="radio" name="q1" value="Anderes"><span class="dot"></span><span>Anderes</span></label>
+    </div>
+    <div class="error-msg" id="err-1">Bitte wähle eine Option aus.</div>
+    <textarea id="q1-detail" placeholder="Möchtest du mehr dazu sagen?" style="margin-top:12px;min-height:80px;"></textarea>
+    <p class="optional-hint">Optional</p>
+    <div class="nav">
+      <button class="btn-next" onclick="next(1)">Weiter <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step" id="step-2">
+    <div class="question-block">
+      <div class="milo-avatar">
+        <svg width="22" height="22" viewBox="0 0 60 60" fill="none"><path d="M38 6L14 54h26C51.6 54 57.5 38.7 49.4 30.1L40.2 5.9C39.4 4.1 37.1 4.1 38 6Z" fill="white"/><path d="M22 6L46 54H20C13.4 54 9.8 38.7 17.9 30.1L27.1 5.9C27.9 4.1 30.2 4.1 22 6Z" fill="white" opacity="0.5"/></svg>
+      </div>
+      <div class="speech-bubble">Planst du, dein Milo-Profil noch abzuschliessen?</div>
+    </div>
+    <div class="options" id="opts-2">
+      <label class="option"><input type="radio" name="q2" value="Ja"><span class="dot"></span><span>Ja</span></label>
+      <label class="option"><input type="radio" name="q2" value="Nein"><span class="dot"></span><span>Nein</span></label>
+      <label class="option"><input type="radio" name="q2" value="Vielleicht"><span class="dot"></span><span>Vielleicht</span></label>
+    </div>
+    <div class="error-msg" id="err-2">Bitte wähle eine Option aus.</div>
+    <div class="nav">
+      <button class="btn-back" onclick="back(2)"><svg fill="none" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" stroke="#141414" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn-next" onclick="next(2)">Weiter <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step" id="step-3">
+    <div class="question-block">
+      <div class="milo-avatar">
+        <svg width="22" height="22" viewBox="0 0 60 60" fill="none"><path d="M38 6L14 54h26C51.6 54 57.5 38.7 49.4 30.1L40.2 5.9C39.4 4.1 37.1 4.1 38 6Z" fill="white"/><path d="M22 6L46 54H20C13.4 54 9.8 38.7 17.9 30.1L27.1 5.9C27.9 4.1 30.2 4.1 22 6Z" fill="white" opacity="0.5"/></svg>
+      </div>
+      <div class="speech-bubble">Möchtest du noch etwas hinzufügen?</div>
+    </div>
+    <textarea id="q3" placeholder="Dein Kommentar..."></textarea>
+    <p class="optional-hint">Optional</p>
+    <div class="nav">
+      <button class="btn-back" onclick="back(3)"><svg fill="none" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" stroke="#141414" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn-next" onclick="submit()">Absenden <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Thank you -->
+  <div class="step" id="step-done">
+    <div class="thank-you">
+      <div class="ty-icon">
+        <svg width="36" height="36" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2>Vielen Dank!</h2>
+      <p>Dein Feedback hilft uns, Milo besser zu machen.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  var STEP_LABELS = {
+    'RESULTS_PERMISSION': 'Freigabe deiner Resultate',
+    'WEARABLE_CONNECTION': 'Verbindung deines Geräts (GPS-Uhr etc.)',
+    'CONTACT_PREFERENCES': 'Kommunikationseinstellungen',
+    'WEEKLY_SCHEDULE': 'Wochenplan',
+    'ARE_YOU_READY_FOR_THE_NEXT_CHALLENGE': 'Nächste Herausforderung',
+    'HOW_FAST_CAN_YOU_RUN': 'Lauftempo',
+    'START_DATE': 'Startdatum',
+    'GOAL_SETTING': 'Zielsetzung',
+    'TRAINING_FREQUENCY': 'Trainingsfrequenz'
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var rawStep = params.get('step') || '';
+  var stepLabel = STEP_LABELS[rawStep] || 'einem bestimmten Schritt';
+  document.getElementById('stepLabel').textContent = stepLabel;
+
+  var current = 1;
+  var total = 3;
+  var answers = { stepRaw: rawStep, stepLabel: stepLabel };
+
+  document.querySelectorAll('.options').forEach(function(g) {
+    g.querySelectorAll('.option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        g.querySelectorAll('.option').forEach(function(o) { o.classList.remove('selected'); });
+        opt.classList.add('selected');
+        opt.querySelector('input').checked = true;
+      });
+    });
+  });
+
+  function updateProgress(n) {
+    var segs = document.querySelectorAll('.seg');
+    segs.forEach(function(s, i) {
+      s.classList.toggle('filled', i < n);
+    });
+  }
+
+  function getSelected(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : null;
+  }
+
+  function showStep(n) {
+    document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
+    var id = n === 'done' ? 'step-done' : 'step-' + n;
+    document.getElementById(id).classList.add('active');
+    if (n !== 'done') updateProgress(n);
+    else document.getElementById('segProgress').style.display = 'none';
+  }
+
+  function next(step) {
+    if (step === 1) {
+      var val = getSelected('q1');
+      if (!val) { document.getElementById('err-1').classList.add('visible'); return; }
+      document.getElementById('err-1').classList.remove('visible');
+      answers['q1'] = val;
+      answers['q1Detail'] = document.getElementById('q1-detail').value;
+    } else if (step === 2) {
+      var val = getSelected('q2');
+      if (!val) { document.getElementById('err-2').classList.add('visible'); return; }
+      document.getElementById('err-2').classList.remove('visible');
+      answers['q2'] = val;
+    }
+    current = step + 1;
+    showStep(current);
+  }
+
+  function back(step) { current = step - 1; showStep(current); }
+
+  function submit() {
+    answers['q3'] = document.getElementById('q3').value;
+    submitForm(answers);
+    showStep('done');
+  }
+
+  function submitForm(data) {
+    // Placeholder — wird durch Google Apps Script Endpoint ersetzt
+    console.log('Form submitted:', data);
+  }
+</script>
+</body>
+</html>
