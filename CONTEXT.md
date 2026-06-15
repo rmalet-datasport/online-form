@@ -1,35 +1,47 @@
 # Milo Feedback Forms — Project Context
 
 ## Objective
-Collect feedback from ~150 Milo users segmented into 3 groups. Each segment receives a distinct link to a standalone HTML form. Results are submitted via `submitForm(data)` placeholder function (to be connected to Google Apps Script later).
+Collect feedback from ~150 Milo users segmented into 3 groups. Each user receives a personalized link generated from Google Sheets with pre-filled `?email=` parameter. Responses are submitted to Google Apps Script and written to Google Sheets.
 
 ## Files
 ```
-form-active.html           → Users actively using Milo
-form-inactive.html         → Users who completed onboarding but stopped using Milo
-form-onboarding-dropout.html → Users who never completed onboarding
+form-active.html              → Users actively using Milo (≥ 20% training ratio)
+form-inactive.html            → Users who completed onboarding but stopped (< 20% training ratio)
+form-onboarding-dropout.html  → Users who never completed onboarding
+google-apps-script.js         → Apps Script code to paste in Google Sheets editor
 ```
+
+## Infrastructure
+- **Google Sheet:** `1O-dJv9CNcgidMwbd23dw5fErdzZuRW1MWrIDFtMFBsA`
+- **Apps Script URL:** `https://script.google.com/macros/s/AKfycbyu_G3-Q1JanWo0mQMZ7EbowcPE2oNB0HC7RqjUEwyi2y2mA7IUprJ6Irnry0Ne8ZaEDw/exec`
+- **GitHub Pages base:** `https://rmalet-datasport.github.io/online-form/`
+- **Responses:** 3 separate tabs — `Responses_active`, `Responses_inactive`, `Responses_dropout`
+
+## Personalized Link Formula (Users tab, column I)
+```
+=IF(E2="No","https://rmalet-datasport.github.io/online-form/form-onboarding-dropout.html?email="&ENCODEURL(A2)&"&step="&F2,IF(AND(E2="Yes",IFERROR(H2/G2,0)<0.2),"https://rmalet-datasport.github.io/online-form/form-inactive.html?email="&ENCODEURL(A2),"https://rmalet-datasport.github.io/online-form/form-active.html?email="&ENCODEURL(A2)))
+```
+Columns assumed: A=email, E=onboarding_completed, F=onboarding_step, G=planned_trainings, H=logged_trainings
 
 ## Tech Rules
 - Standalone HTML files, zero external dependencies (except Open Sans via Google Fonts)
 - No framework, pure vanilla JS
 - Mobile-first, responsive
-- One question visible per step, navigation via Weiter / Absenden buttons
-- Progress bar at top showing current step (e.g. "Frage 2 von 3") with colored fill
-- `submitForm(data)` is an empty placeholder function at the end of each file — do not implement backend logic
+- Segmented progress bar at top (colored fill per step)
+- `submitForm(data)` sends POST to Apps Script with `Content-Type: text/plain;charset=utf-8` + `mode: no-cors`
 - All forms are in German (Swiss German tone — use "du", avoid "Sie")
 
 ## Design System
-- Background: red (Milo brand color — do not change, already implemented)
-- Card: white, centered, rounded
+- Background: red `#E70E22` (Milo brand color)
+- Card: `#F7F7F7`, rounded, bottom drawer on mobile / centered card on desktop
 - Primary color / CTA: `#E70E22`
 - Text: `#141414`
 - Font: Open Sans (Google Fonts), fallback Arial
-- Logo: Milo logo in header
+- Logo: Milo SVG logo in header
 
 ## Query Parameters (all three forms)
-- `?email=user@example.com` → read on load, store in `answers.email`, never display on screen
-- `?step=XXXX` → only for `form-onboarding-dropout.html`, maps to German label (see mapping below)
+- `?email=user@example.com` → read on load, stored in `answers.email`, never displayed
+- `?step=XXXX` → only for `form-onboarding-dropout.html`, maps to German label
 
 ### Step Mapping (onboarding dropout)
 ```
@@ -49,26 +61,29 @@ Fallback if unknown or missing: `"einem bestimmten Schritt"`
 
 ## Form Structures
 
-### form-onboarding-dropout.html — 3 steps
+### form-active.html — 4 steps
 
-**Step 1** — Warum hast du aufgehört?
-- Question: "Du hast dein Milo-Setup bei **[stepLabel]** unterbrochen — was hat dich dazu bewogen?"
-- Single choice (required): Keine Zeit / Onboarding zu lang / Dieser Schritt war unklar / Ich wollte keine Daten weitergeben / Technische Probleme / Anderes
+**Step 1** — Hilft dir der Coach, deine Leistungen zu verbessern?
+- Single choice (required): Ja, deutlich / Noch zu früh, um das zu sagen / Noch nicht / Nein
 - Conditional inline textarea (optional, no step change):
-  - "Dieser Schritt war unklar" → "Was genau war unklar?"
-  - "Ich wollte keine Daten weitergeben" → "Welche Daten haben dich gestört?"
-  - "Technische Probleme" → "Bitte beschreibe das Problem."
-  - "Anderes" → "Bitte beschreibe kurz."
+  - "Ja, deutlich" → "Was gefällt dir besonders gut? Nenn uns ein oder zwei Dinge."
+  - "Noch zu früh, um das zu sagen" → "Was hat dich bisher überzeugt — oder was fehlt noch?"
+  - "Noch nicht" → "Was hält dich zurück? Was würde dir helfen?"
+  - "Nein" → "Was hat dich enttäuscht? Was hättest du erwartet?"
 
-**Step 2** — Planst du abzuschliessen?
-- "Planst du, dein Milo-Profil noch abzuschliessen?" — Ja / Nein / Vielleicht (required)
+**Step 2** — Was muss dringend verbessert werden?
+- "Nenn uns ein oder zwei Dinge, die wir dringend verbessern müssen." — textarea (optional)
 
-**Step 3** — Abschluss (feedback + incentive + submit)
-- "Möchtest du noch etwas hinzufügen?" — textarea (optional)
-- Incentive box: "Als Dankeschön für dein Feedback schenken wir dir einen zusätzlichen Monat Milo — du erhältst deinen Code per E-Mail innerhalb von 48 Stunden."
+**Step 3** — NPS
+- Slider 0–10: "Auf einer Skala von 0 bis 10: Würdest du Milo jemandem in deinem Umfeld empfehlen?"
+- No referral email block
+
+**Step 4** — Abschluss (open question + incentive + submit)
+- "Wenn du Milo einem Freund erklären müsstest, was würdest du sagen?" — textarea (required)
+- Incentive box: CHF 20.– Gutschein bei Datasport
 - Absenden button
 
-**submitForm data:** `{ email, stepRaw, stepLabel, reason, reasonDetail, completeLater, freeComment }`
+**submitForm payload:** `{ formType: 'active', email, nps, q1, q1_follow, q2, q4 }`
 
 ---
 
@@ -86,42 +101,35 @@ Fallback if unknown or missing: `"einem bestimmten Schritt"`
 
 **Step 3** — Abschluss (feedback + incentive + submit)
 - "Möchtest du noch etwas hinzufügen?" — textarea (optional)
-- Incentive box: "Als Dankeschön für dein Feedback schenken wir dir einen zusätzlichen Monat Milo — du erhältst deinen Code per E-Mail innerhalb von 48 Stunden."
+- Incentive box: 1 mois Milo offert, code envoyé par email sous 48h
 - Absenden button
 
-**submitForm data:** `{ email, reason, reasonDetail, returnMotivation, freeComment }`
+**submitForm payload:** `{ formType: 'inactive', email, q1, q1_follow, q2, q3 }`
 
 ---
 
-### form-active.html — 4 steps
+### form-onboarding-dropout.html — 3 steps
 
-**Step 1** — Hilft dir der Coach, deine Leistungen zu verbessern?
-- Single choice (required): Ja, deutlich / Noch zu früh, um das zu sagen / Noch nicht / Nein
+**Step 1** — Warum hast du aufgehört?
+- Question: "Du hast dein Milo-Setup bei **[stepLabel]** unterbrochen — was hat dich dazu bewogen?"
+- Single choice (required): Keine Zeit / Onboarding zu lang / Dieser Schritt war unklar / Ich wollte keine Daten weitergeben / Technische Probleme / Anderes
 - Conditional inline textarea (optional, no step change):
-  - "Ja, deutlich" → "Was gefällt dir besonders gut? Nenn uns ein oder zwei Dinge."
-  - "Noch zu früh, um das zu sagen" → "Was hat dich bisher überzeugt — oder was fehlt noch?"
-  - "Noch nicht" → "Was hält dich zurück? Was würde dir helfen?"
-  - "Nein" → "Was hat dich enttäuscht? Was hättest du erwartet?"
+  - "Dieser Schritt war unklar" → "Was genau war unklar?"
+  - "Ich wollte keine Daten weitergeben" → "Welche Daten haben dich gestört?"
+  - "Technische Probleme" → "Bitte beschreibe das Problem."
+  - "Anderes" → "Bitte beschreibe kurz."
 
-**Step 2** — Was muss dringend verbessert werden?
-- "Nenn uns ein oder zwei Dinge, die wir dringend verbessern müssen." — textarea (optional)
+**Step 2** — Planst du abzuschliessen?
+- "Planst du, dein Milo-Profil noch abzuschliessen?" — Ja / Nein / Vielleicht (required)
 
-**Step 3** — NPS + Referral
-- NPS slider 0–10: "Auf einer Skala von 0 bis 10: Würdest du Milo jemandem in deinem Umfeld empfehlen?"
-- If score ≥ 7: referral block appears dynamically
-  - Text: "Kennst du jemanden, der Milo ausprobieren sollte? Trag seine E-Mail-Adresse ein — er erhält einen Monat Milo gratis, und du bekommst einen CHF 20.– Gutschein für deine nächste Datasport-Anmeldung."
-  - Repeatable email field (+ button to add more, no limit)
-
-**Step 4** — Abschluss (open question + incentive + submit)
-- "Wenn du Milo einem Freund erklären müsstest, was würdest du sagen?" — textarea (required)
-- Incentive box: "Als Dankeschön für dein Feedback schenken wir dir einen zusätzlichen Monat Milo — du erhältst deinen Code per E-Mail innerhalb von 48 Stunden."
+**Step 3** — Abschluss (feedback + incentive + submit)
+- "Möchtest du noch etwas hinzufügen?" — textarea (optional)
+- Incentive box: 1 mois Milo offert, code envoyé par email sous 48h
 - Absenden button
 
-**submitForm data:** `{ email, performanceRating, performanceComment, improvements, nps, referralEmails, openDescription }`
+**submitForm payload:** `{ formType: 'dropout', email, stepRaw, stepLabel, reason, reasonDetail, completeLater, freeComment }`
 
 ---
 
 ## Pending
-- [ ] Google Apps Script endpoint — replace `submitForm()` placeholder onceSheet is ready
-- [ ] Incentive email sending process (48h turnaround mentioned in forms)
-- [ ] Personalized links to generate per user from Google Sheets (email + step query params)
+- [ ] Incentive fulfillment — process to send CHF 20 voucher (active) and 1-month Milo code (inactive/dropout) within 48h
